@@ -57,3 +57,19 @@ let anchor = ref(window.innerHeight * 0.5)
   }
 }
 </style>
+
+<route lang="json">
+{
+  "meta": {
+    "stacks": [
+      "detail",
+      "sign-up",
+      "settings",
+      {
+        "name": "sign-in",
+        "children": ["sign-up", "forgot-password"]
+      }
+    ]
+  }
+}
+</route>

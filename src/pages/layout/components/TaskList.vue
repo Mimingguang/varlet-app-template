@@ -2,8 +2,8 @@
   <div class="task-list">
     <var-app-bar title="任务列表">
       <template #right>
-        <var-button type="primary" round icon-container @click.stop="">
-          <var-icon name="plus" />
+        <var-button type="primary" round icon-container @click.stop="handleBatchUpload">
+          <var-icon name="upload" />
         </var-button>
       </template>
     </var-app-bar>
@@ -11,10 +11,10 @@
       <div class="list-container">
         <template v-if="data.length">
           <var-checkbox-group ref="group" v-model="checkboxGroup">
-            <var-cell v-for="(item, index) in data" :key="index" border @click="handleDetail(item)">
+            <var-cell v-for="(item, index) in data" :key="index" border>
               <div class="item-content">
                 <var-checkbox :checked-value="item.check"> </var-checkbox>
-                <var-row justify="space-between" :gutter="[5, 10]">
+                <var-row justify="space-between" :gutter="[5, 10]" @click="handleDetail(item)">
                   <var-col :span="12">
                     <div class="item">任务名称</div>
                   </var-col>
@@ -47,10 +47,13 @@
                     <var-icon name="plus" />
                   </var-button>
                   <var-button type="info" round icon-container @click.stop="">
-                    <var-icon name="information" />
+                    <var-icon name="upload" />
                   </var-button>
                   <var-button type="success" round icon-container @click.stop="">
-                    <var-icon name="check" />
+                    <var-icon name="cog" />
+                  </var-button>
+                  <var-button type="danger" round icon-container @click.stop="">
+                    <var-icon name="delete" />
                   </var-button>
                 </div>
               </var-col>
@@ -63,7 +66,8 @@
               <template #footer>
                 <var-button
                   color="var(--result-empty-color)"
-                  text-color="#fff"
+                  round
+                  icon-container
                   @click="
                     () => {
                       refresh()
@@ -71,7 +75,7 @@
                     }
                   "
                 >
-                  点击刷新
+                  <var-icon name="refresh" />
                 </var-button>
               </template>
             </var-result>
@@ -105,6 +109,12 @@ const handleDetail = (item) => {
   console.log(item)
   pushStack('/detail')
 }
+const handleBatchUpload = () => {
+  console.log(checkboxGroup.value)
+  if (!checkboxGroup.value.length) {
+    Snackbar({ type: 'warning', content: '至少选择一条任务！！', duration: 3000, forbidClick: true })
+  }
+}
 const refresh = () => {
   setTimeout(() => {
     data.value = data1.value
@@ -115,9 +125,10 @@ const refresh = () => {
 <style lang="less" scoped>
 .task-list {
   height: 100%;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
   .var-pull-refresh {
-    height: 100%;
+    flex: 1;
   }
   .list-container {
     height: 100%;
@@ -128,6 +139,7 @@ const refresh = () => {
     .item-content {
       display: flex;
       align-items: center;
+      margin-bottom: 10px;
     }
     .btns {
       .var-button {
