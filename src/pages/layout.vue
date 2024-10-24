@@ -10,17 +10,17 @@ const tabs = ref([
     icon: 'home',
     name: '/layout/home'
   },
-  {
-    label: 'TOPIC',
-    icon: 'heart',
-    name: '/layout/topic'
-  },
-  {
-    label: 'MESSAGE',
-    icon: 'border-radius',
-    namespace: 'i',
-    name: '/layout/message'
-  },
+  // {
+  //   label: 'TOPIC',
+  //   icon: 'heart',
+  //   name: '/layout/topic'
+  // },
+  // {
+  //   label: 'MESSAGE',
+  //   icon: 'border-radius',
+  //   namespace: 'i',
+  //   name: '/layout/message'
+  // },
   {
     label: 'PROFILE',
     icon: 'account-circle',
@@ -42,7 +42,7 @@ function to(path: string) {
 </script>
 
 <template>
-  <div class="h-[var(--app-height)] pb-[51px] overflow-y-auto">
+  <div class="h-[var(--app-height)] pb-[51px] overflow-y-auto layout-container">
     <router-view v-slot="{ Component }">
       <keep-alive>
         <component :is="Component" />
@@ -62,3 +62,9 @@ function to(path: string) {
     </var-bottom-navigation>
   </div>
 </template>
+<style lang="less" scoped>
+.layout-container {
+  display: flex;
+  flex-direction: column;
+}
+</style>
