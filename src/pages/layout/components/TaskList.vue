@@ -88,7 +88,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-const { pushStack } = useAppRouter()
+const { router } = useAppRouter()
 let isRefresh = ref(false)
 const loading = ref(false)
 let data = ref([])
@@ -107,7 +107,7 @@ onMounted(() => {
 
 const handleDetail = (item) => {
   console.log(item)
-  pushStack('/detail')
+  router.push({ path: '/layout/detail', query: { id: item.id, name: item.name } })
 }
 const handleBatchUpload = () => {
   console.log(checkboxGroup.value)

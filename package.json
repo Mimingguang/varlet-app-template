@@ -30,6 +30,7 @@
     "*.{vue,ts,tsx,js,jsx}": "pnpm lint"
   },
   "dependencies": {
+    "@mapbox/mapbox-gl-draw": "^1.4.3",
     "@varlet/axle": "^0.9.0",
     "@varlet/bounce-fixer": "^0.0.3",
     "@varlet/shared": "3.6.1",

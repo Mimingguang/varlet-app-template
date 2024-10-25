@@ -10,7 +10,7 @@
     <template #content> </template>
   </app-header> -->
   <section ref="homeRef" id="#home" class="home-wrap">
-    <MaplibreGLMap></MaplibreGLMap>
+    <slot name="map"></slot>
     <var-floating-panel v-model:anchor="anchor" :anchors="anchors" :teleport="false" :content-draggable="false">
       <template #header>
         <div class="var-floating-panel__header">
@@ -28,7 +28,6 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import MaplibreGLMap from '@/components/MaplibreGLMap.vue'
 import TaskList from './components/TaskList.vue'
 
 const homeRef = ref(null)
@@ -57,19 +56,3 @@ let anchor = ref(window.innerHeight * 0.5)
   }
 }
 </style>
-
-<route lang="json">
-{
-  "meta": {
-    "stacks": [
-      "detail",
-      "sign-up",
-      "settings",
-      {
-        "name": "sign-in",
-        "children": ["sign-up", "forgot-password"]
-      }
-    ]
-  }
-}
-</route>

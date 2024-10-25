@@ -50,12 +50,12 @@ watch(
 
 <template>
   <div class="router-stack" ref="stack" :style="{ zIndex }">
-    <keep-alive v-if="keepAlive">
+    <keep-alive v-if="keepAlive" class="h-full">
       <div v-if="showParent">
         <slot />
       </div>
     </keep-alive>
-    <div v-show="showParent" v-else>
+    <div v-show="showParent" v-else class="h-full">
       <slot />
     </div>
 

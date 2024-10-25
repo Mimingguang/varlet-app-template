@@ -1,17 +1,62 @@
-<script setup lang="ts">
-import { ref } from 'vue'
-
+<script setup lang="js">
+import { ref,onMounted } from 'vue'
+const { route } = useAppRouter()
+import { useOn } from '@/use/useOn'
+import DetailList from './components/detailList.vue'
+const anchors = ref([40, window.innerHeight * 0.5])
+let anchor = ref(window.innerHeight * 0.5)
 // const isRefresh = ref(false)
+let _map = null
 
 // function handleRefresh() {
 //   isRefresh.value = false
 // }
+useOn('mapLoad',(map) => {
+    _map = map
+    console.log(_map);
+})
+useOn('mapClick',(e) => {
+    console.log(e);
+})
+onMounted(() => {
+    useOn('detail',(item) => {
+        console.log(item);
+    })
+    useOn('add', (item) => {
+        _map.setCenter([116.96989682278297, 36.78766181272357])
+        const circleSource = {
+            type: 'geojson',
+            data: {
+            type: 'Feature',
+            geometry: {
+                type: 'LineString',
+                coordinates: [[116.96989682278297, 36.78766181272357],[115.96989682278297, 36.78766181272357]]
+            }
+            }
+        }
+        if (_map.getSource('circle-source')) {
+            _map.getSource('circle-source').setData(circleSource)
+        } else {
+            _map.addSource('circle-source', circleSource)
+            _map.addLayer({
+                id: 'circle-layer',
+                type: 'line',
+                source: 'circle-source',
+                paint: {
+                    'line-color': '#00FF00',
+                    'line-width':4,
+                    'line-opacity': 0.5
+                }
+            })
+        }
+    })
+})
 </script>
 
 <template>
   <router-stack>
     <div class="pt-[var(--app-bar-height)] h-full detail-wrap">
-      <app-header :title="$t('Card Title')">
+      <app-header :title="route.query.name">
         <template #left>
           <app-back />
         </template>
@@ -30,8 +75,18 @@ import { ref } from 'vue'
         </template> -->
       </app-header>
       <div class="detail-container">
-        11
         <slot name="map"></slot>
+        <var-floating-panel v-model:anchor="anchor" :anchors="anchors" :teleport="false" :content-draggable="false">
+          <template #header>
+            <div class="var-floating-panel__header">
+              <div class="var-floating-panel__header-toolbar"></div>
+            </div>
+          </template>
+          <!-- <div style="text-align: center; padding: 15px">
+        <p>面板锚点高度为 {{ Math.floor(anchor) }} px</p>
+      </div> -->
+          <DetailList></DetailList>
+        </var-floating-panel>
       </div>
       <!-- <var-pull-refresh v-model="isRefresh" @refresh="handleRefresh">
         <var-swipe>
@@ -116,6 +171,23 @@ import { ref } from 'vue'
   }
   &-container {
     flex: 1;
+    position: relative;
+    overflow: hidden;
+    :deep(.var-floating-panel) {
+      position: absolute;
+      background-color: transparent;
+      box-shadow: none;
+      // transform:none !important;
+      .var-floating-panel__content {
+        background-color: #fff;
+      }
+      .var-floating-panel__header {
+        height: 40px;
+      }
+      .var-floating-panel__header-toolbar {
+        background-color: var(--bottom-navigation-item-active-color);
+      }
+    }
   }
 }
 </style>

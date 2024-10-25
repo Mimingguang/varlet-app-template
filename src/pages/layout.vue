@@ -2,6 +2,8 @@
 import { ref, watch } from 'vue'
 
 const { router, route } = useAppRouter()
+import MaplibreGLMap from '@/components/MaplibreGLMap.vue'
+
 const active = ref()
 
 const tabs = ref([
@@ -45,7 +47,11 @@ function to(path: string) {
   <div class="h-[var(--app-height)] pb-[51px] overflow-y-auto layout-container">
     <router-view v-slot="{ Component }">
       <keep-alive>
-        <component :is="Component" />
+        <component :is="Component">
+          <template #map>
+            <MaplibreGLMap> </MaplibreGLMap>
+          </template>
+        </component>
       </keep-alive>
     </router-view>
 

@@ -12,7 +12,6 @@ const router: Router = createRouter({
     ...routes
   ]
 })
-
 const { notify } = registryRouterChannel(router)
 
 router.beforeEach((to) => {

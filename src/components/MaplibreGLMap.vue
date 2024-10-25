@@ -1,8 +1,10 @@
 <script setup>
 /* global maplibregl */
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, onUnmounted, reactive, ref } from 'vue'
+import { emitter } from '@/use'
+import MapboxDraw from '@mapbox/mapbox-gl-draw'
 let map = reactive({})
-const drawMode = ref('') // 当前绘制模式，初始为 'line'
+const drawMode = ref('circle') // 当前绘制模式，初始为 'line'
 // f4544db8c930fbea8272002799c78351
 // 90425f13ed47e5a05f472e5d91d31594
 // f4544db8c930fbea8272002799c78351
@@ -259,7 +261,10 @@ function drawCircle(center, edge) {
     })
   }
 }
-
+onUnmounted(() => {
+  map.remove()
+  map = null
+})
 onMounted(() => {
   map = new maplibregl.Map({
     container: 'map',
@@ -267,13 +272,53 @@ onMounted(() => {
     center: [117.003825, 36.661953],
     zoom: 10
   })
+  // 比例尺
+  const scaleControl = new maplibregl.ScaleControl({
+    maxWidth: 80, // 最大宽度
+    unit: 'metric' // 单位 ('metric' 或 'imperial')
+  })
+  map.addControl(scaleControl, 'bottom-left')
 
+  // 添加全屏控件
+  const fullscreenControl = new maplibregl.FullscreenControl()
+  map.addControl(fullscreenControl, 'bottom-right')
+
+  // 添加定位控件
+  map.addControl(
+    new maplibregl.GeolocateControl({
+      positionOptions: { enableHighAccuracy: true },
+      trackUserLocation: true
+    }),
+    'bottom-right'
+  )
+  // 添加缩放控件
+  const navigationControl = new maplibregl.NavigationControl({
+    showCompass: true, // 显示指南针
+    showZoom: true // 显示缩放按钮
+  })
+  map.addControl(navigationControl, 'bottom-right') // 将控件添加到右上角
+
+  // 初始化 Mapbox GL Draw
+  const draw = new MapboxDraw({
+    displayControlsDefault: false,
+    controls: {
+      point: true,
+      line_string: true,
+      polygon: true,
+      trash: true
+    },
+    defaultMode: 'draw_polygon'
+  })
+  // 将 Draw 工具添加到地图上
+  map.addControl(draw)
   map.on('load', function () {
+    emitter.emit('mapLoad', map)
     // 可以在这里调用 drawGeoJsons 函数来绘制初始数据
     // drawGeoJsons([{ key: 'Example1', geojson: [[[...]]] }, { key: 'Example2', geojson: [[[...]]] }]);
   })
   // 点击绘制点和线或圆形
   map.on('click', (e) => {
+    emitter.emit('mapClick', e)
     if (drawMode.value === 'line') {
       if (points.length < 2) {
         points.push([e.lngLat.lng, e.lngLat.lat]) // 添加点击的点
@@ -367,6 +412,9 @@ defineExpose({
   #map {
     width: 100%;
     height: 100%;
+    .maplibregl-ctrl-attrib .maplibregl-compact {
+      display: none;
+    }
   }
 }
 </style>
