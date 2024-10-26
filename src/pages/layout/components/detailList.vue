@@ -2,7 +2,7 @@
   <div class="detail-list">
     <var-app-bar title="任务列表">
       <template #right>
-        <var-button type="primary" round icon-container @click.stop="handleAdd">
+        <var-button v-if="isAdd" type="primary" round icon-container @click.stop="handleAdd">
           <var-icon name="plus" />
         </var-button>
       </template>
@@ -86,11 +86,15 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { emitter } from '@/use'
+import { useOn } from '@/use/useOn'
+import { useGlobalStore } from '@/store'
+const { addControl } = useGlobalStore()
 const { router } = useAppRouter()
 let isRefresh = ref(false)
 const loading = ref(false)
 let data = ref([])
 const data1 = ref([])
+let isAdd = ref(false)
 
 onMounted(() => {
   for (let i = 0; i < 20; i++) {
@@ -101,6 +105,9 @@ onMounted(() => {
     })
   }
   data.value = data1.value
+  useOn('mapLoad', () => {
+    isAdd.value = true
+  })
 })
 
 const handleDetail = (item) => {
@@ -108,7 +115,8 @@ const handleDetail = (item) => {
   emitter.emit('detail', item)
 }
 const handleAdd = () => {
-  emitter.emit('add')
+  addControl()
+  // emitter.emit('addControl')
 }
 const refresh = () => {
   setTimeout(() => {

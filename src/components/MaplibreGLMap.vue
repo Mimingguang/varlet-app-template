@@ -1,10 +1,39 @@
 <script setup>
 /* global maplibregl */
-import { onMounted, onUnmounted, reactive, ref } from 'vue'
+import { onMounted, onUnmounted, reactive, ref, computed } from 'vue'
 import { emitter } from '@/use'
-import MapboxDraw from '@mapbox/mapbox-gl-draw'
+// import { useOn } from '@/use/useOn'
+import { storeToRefs } from 'pinia'
+import { useGlobalStore } from '@/store'
+const { controlShow } = storeToRefs(useGlobalStore())
+
 let map = reactive({})
-const drawMode = ref('circle') // 当前绘制模式，初始为 'line'
+const state = reactive({
+  isLoadFinished: false,
+  drawMode: 'LineString', // 当前绘制模式，初始为 'LineString'
+  isDrawOpen: false,
+  coordinates: [],
+  active: false,
+  layerTypes: [
+    {
+      label: '点',
+      value: 'Point'
+    },
+    {
+      label: '线',
+      value: 'LineString'
+    },
+    {
+      label: '面',
+      value: 'Polygon'
+    },
+    {
+      label: '圆',
+      value: 'Circle'
+    }
+  ]
+})
+const currentLayerType = computed(() => state.layerTypes.find((item) => item.value === state.drawMode).label)
 // f4544db8c930fbea8272002799c78351
 // 90425f13ed47e5a05f472e5d91d31594
 // f4544db8c930fbea8272002799c78351
@@ -53,214 +82,13 @@ const style = {
     }
   ]
 }
-const boundSource = (id) => {
-  const layerId = `multi-polygon-layer-${id}`
-
-  if (!map.getLayer(layerId)) {
-    console.error(`Layer ${layerId} does not exist.`)
-    return
-  }
-
-  const sourceId = `multi-polygon-source-${id}`
-  const sourceData = map.getSource(sourceId)
-
-  if (!sourceData) {
-    console.error(`Source ${sourceId} does not exist.`)
-    return
-  }
-
-  const geojsonData = sourceData._data
-
-  const bounds = new maplibregl.LngLatBounds()
-
-  geojsonData.features.forEach((feature) => {
-    if (feature.geometry.type === 'MultiPolygon') {
-      feature.geometry.coordinates.forEach((polygon) => {
-        polygon[0].forEach((coord) => {
-          bounds.extend(coord)
-        })
-      })
-    }
-  })
-
-  map.fitBounds(bounds, { padding: 20 })
-}
 // 随机生成颜色函数
 function getRandomColor() {
   const randomColor = Math.floor(Math.random() * 16777215).toString(16)
   return `#${randomColor.padStart(6, '0')}` // 确保是6位数
 }
-const allData = ref([])
-const drawGeoJsons = (geojsonArray, allKeys, isStore) => {
-  console.log(map, 'layers')
-  // 清除之前的图层和数据源
-  allKeys.forEach((key) => {
-    if (map.getLayer(`multi-polygon-layer-${key}`)) {
-      map.removeLayer(`multi-polygon-layer-${key}`)
-    }
-    if (map.getSource(`multi-polygon-source-${key}`)) {
-      map.removeSource(`multi-polygon-source-${key}`)
-    }
-  })
-  if (isStore) {
-    allData.value = geojsonArray
-  }
-  const bounds = new maplibregl.LngLatBounds()
+// const allData = ref([])
 
-  if (geojsonArray.length === 0) return // 检查是否有数据
-  console.log(geojsonArray, 'geojsonArray')
-  geojsonArray.forEach((item) => {
-    const geojsonData = item.geojson
-
-    // 添加 MultiPolygon 数据源，使用唯一的源名称
-    const sourceId = `multi-polygon-source-${item.key}`
-    map.addSource(sourceId, {
-      type: 'geojson',
-      data: {
-        type: 'FeatureCollection',
-        features: [
-          {
-            type: 'Feature',
-            properties: { name: item.key },
-            geometry: {
-              type: 'MultiPolygon',
-              coordinates: geojsonData
-            }
-          }
-        ]
-      }
-    })
-
-    // 添加 MultiPolygon 图层，使用唯一的图层名称
-    const layerId = `multi-polygon-layer-${item.key}`
-    map.addLayer({
-      id: layerId,
-      type: 'fill',
-      source: sourceId,
-      paint: {
-        'fill-color': item?.color || getRandomColor(),
-        'fill-opacity': 0.5
-      }
-    })
-
-    // 扩展边界以包含当前多边形的坐标
-    geojsonData.forEach((polygon) => {
-      polygon[0].forEach((coord) => {
-        bounds.extend(coord)
-      })
-    })
-  })
-
-  // 自动缩放以确保所有 MultiPolygon 都在视图中
-  map.fitBounds(bounds, { padding: 20 }) // 添加边距以确保多边形完全可见
-}
-
-let points = [] // 存储点击的点
-let drawingCircle = false // 是否正在绘制圆形
-let circleCenter = null // 圆心坐标
-let markers = [] // 存储所有的标记
-
-// 绘制点的函数
-function drawPoints() {
-  // 清空之前的标记
-  markers.forEach((marker) => marker.remove())
-  markers = [] // 重置标记数组
-
-  points.forEach((point) => {
-    const marker = new maplibregl.Marker().setLngLat(point).addTo(map)
-    markers.push(marker) // 将新标记添加到数组中
-  })
-}
-
-// 绘制线的函数
-function drawLine() {
-  const lineSource = {
-    type: 'geojson',
-    data: {
-      type: 'Feature',
-      geometry: {
-        type: 'LineString',
-        coordinates: points
-      }
-    }
-  }
-
-  if (map.getSource('line-source')) {
-    map.getSource('line-source').setData(lineSource.data)
-  } else {
-    map.addSource('line-source', lineSource)
-
-    map.addLayer({
-      id: 'line-layer',
-      type: 'line',
-      source: 'line-source',
-      layout: {
-        'line-join': 'round',
-        'line-cap': 'round'
-      },
-      paint: {
-        'line-color': '#FF0000',
-        'line-width': 4
-      }
-    })
-  }
-}
-
-function panduanxiangjiao() {
-  let keys = []
-  allData.value.forEach((item) => {
-    console.log(item, 'item')
-    console.log(points, 'item')
-    console.log(item.geojson, 'item')
-    console.log()
-    // let result = turf.booleanPointInPolygon(turf.multiPolygon(item.geojson), turf.points(points[0]))
-    let result = false
-    if (result) {
-      keys.push(item.key)
-    }
-  })
-  return keys
-}
-// 绘制圆形的函数
-function drawCircle(center, edge) {
-  const radius = Math.sqrt(Math.pow(edge.lng - center[0], 2) + Math.pow(edge.lat - center[1], 2)) //计算半径
-
-  const circleCoordinates = []
-
-  for (let i = 0; i <= 360; i++) {
-    const angle = (i * Math.PI) / 180 // 转换为弧度
-    const lng = center[0] + radius * Math.cos(angle)
-    const lat = center[1] + radius * Math.sin(angle)
-    circleCoordinates.push([lng, lat])
-  }
-
-  const circleSource = {
-    type: 'geojson',
-    data: {
-      type: 'Feature',
-      geometry: {
-        type: 'Polygon',
-        coordinates: [circleCoordinates]
-      }
-    }
-  }
-
-  if (map.getSource('circle-source')) {
-    map.getSource('circle-source').setData(circleSource.data)
-  } else {
-    map.addSource('circle-source', circleSource)
-
-    map.addLayer({
-      id: 'circle-layer',
-      type: 'fill',
-      source: 'circle-source',
-      paint: {
-        'fill-color': '#00FF00',
-        'fill-opacity': 0.5
-      }
-    })
-  }
-}
 onUnmounted(() => {
   map.remove()
   map = null
@@ -297,71 +125,41 @@ onMounted(() => {
     showZoom: true // 显示缩放按钮
   })
   map.addControl(navigationControl, 'bottom-right') // 将控件添加到右上角
-
-  // 初始化 Mapbox GL Draw
-  const draw = new MapboxDraw({
-    displayControlsDefault: false,
-    controls: {
-      point: true,
-      line_string: true,
-      polygon: true,
-      trash: true
-    },
-    defaultMode: 'draw_polygon'
-  })
-  // 将 Draw 工具添加到地图上
-  map.addControl(draw)
   map.on('load', function () {
     emitter.emit('mapLoad', map)
+    state.isLoadFinished = true
     // 可以在这里调用 drawGeoJsons 函数来绘制初始数据
     // drawGeoJsons([{ key: 'Example1', geojson: [[[...]]] }, { key: 'Example2', geojson: [[[...]]] }]);
   })
   // 点击绘制点和线或圆形
   map.on('click', (e) => {
     emitter.emit('mapClick', e)
-    if (drawMode.value === 'line') {
-      if (points.length < 2) {
-        points.push([e.lngLat.lng, e.lngLat.lat]) // 添加点击的点
-        drawPoints() // 绘制点
-
-        if (points.length === 2) {
-          drawLine() // 绘制线
-        }
-      } else {
-        console.warn('已经绘制了一条线，请先清除再绘制。')
-      }
-    } else if (drawMode.value === 'circle') {
-      if (!drawingCircle) {
-        drawingCircle = true
-        circleCenter = [e.lngLat.lng, e.lngLat.lat] // 设置圆心
-      }
-    }
-  })
-
-  // 鼠标移动时更新圆形
-  map.on('mousemove', (e) => {
-    if (drawingCircle && circleCenter) {
-      drawCircle(circleCenter, e.lngLat) // 绘制圆形
-    }
-  })
-
-  // 鼠标抬起结束绘制圆形
-  map.on('mouseup', () => {
-    if (drawingCircle) {
-      drawingCircle = false
-      circleCenter = null // 清空圆心
-    }
+    state.isDrawOpen && startDraw(e)
   })
 })
-// 切换绘制模式
-// const toggleDrawMode = () => {
-//   drawMode.value = drawMode.value === 'line' ? 'circle' : 'line'
-//   // clearLineAndCircle(); // 清除之前的绘制
-// }
-// 清除线和圆的函数
-const clearLineAndCircle = () => {
-  points = [] // 清空存储的点
 
+const handleChangeType = (item) => {
+  state.drawMode = item.value
+  state.active = false
+}
+
+const addDraw = () => {
+  state.isDrawOpen = true
+}
+const endDraw = () => {
+  state.isDrawOpen = false
+  switch (state.drawMode) {
+    case 'LineString':
+      if (map.getLayer('line-layer')) {
+        map.setPaintProperty('line-layer', 'line-dasharray', [1, 0])
+      }
+      break
+
+    default:
+      break
+  }
+}
+const clearDraw = () => {
   // 移除线图层和数据源
   if (map.getLayer('line-layer')) {
     map.removeLayer('line-layer')
@@ -369,38 +167,156 @@ const clearLineAndCircle = () => {
   if (map.getSource('line-source')) {
     map.removeSource('line-source')
   }
-
   // 移除圆形图层和数据源
-  if (map.getLayer('circle-layer')) {
-    map.removeLayer('circle-layer')
+  if (map.getLayer('point-layer')) {
+    map.removeLayer('point-layer')
   }
-  if (map.getSource('circle-source')) {
-    map.removeSource('circle-source')
+  if (map.getSource('point-source')) {
+    map.removeSource('point-source')
   }
-  // 移除圆形图层和数据源
-  if (map.getLayer('polygon-layer')) {
-    map.removeLayer('polygon-layer')
-  }
-  if (map.getSource('polygon-source')) {
-    map.removeSource('polygon-source')
-  }
-
-  drawingCircle = false // 重置绘制状态
-  circleCenter = null // 清空圆心
-  markers.forEach((marker) => marker.remove())
-  markers = [] // 重置标记数组
 }
-defineExpose({
-  drawGeoJsons: drawGeoJsons,
-  boundSource: boundSource,
-  clearLineAndCircle: clearLineAndCircle,
-  panduanxiangjiao: panduanxiangjiao
-})
+const startDraw = (e) => {
+  console.log(e)
+  switch (state.drawMode) {
+    case 'Point':
+      state.coordinates.push([e.lngLat.lng, e.lngLat.lat])
+      drawPoints()
+      // 当有两个点时，绘制线
+      if (state.coordinates.length === 1) {
+        state.coordinates = [] // 重置坐标数组，以便再次绘制
+      }
+      break
+    case 'LineString':
+      if (!map.getSource('line-source') && !map.getLayer('line-layer')) {
+        map.addSource('line-source', {
+          type: 'geojson',
+          data: {
+            type: 'FeatureCollection',
+            features: []
+          }
+        })
+
+        // 添加线的图层
+        map.addLayer({
+          id: 'line-layer',
+          type: 'line',
+          source: 'line-source',
+          layout: {
+            'line-cap': 'round',
+            'line-join': 'round'
+          },
+          paint: {
+            'line-color': getRandomColor(), // 线的颜色
+            'line-width': 2, // 线的宽度
+            'line-dasharray': [3, 2] // 定义虚线样式，[2, 4] 表示线段长度为 2，间隔为 4
+          }
+        })
+      }
+
+      map.on('click', 'line-layer', () => {
+        if (!state.isDrawOpen) {
+          map.setPaintProperty('line-layer', 'line-dasharray', [3, 2])
+          state.isDrawOpen = true
+        }
+      })
+
+      state.coordinates.push([e.lngLat.lng, e.lngLat.lat])
+      drawPoints()
+      // 当有两个点时，绘制线
+      if (state.coordinates.length === 2) {
+        drawLine(state.coordinates)
+        state.coordinates = [] // 重置坐标数组，以便再次绘制
+      }
+      break
+
+    default:
+      break
+  }
+}
+const drawPoints = () => {
+  // 创建一个包含多个点的 GeoJSON 数据
+  const pointData = {
+    type: 'FeatureCollection',
+    features: state.coordinates.map((coord) => ({
+      type: 'Feature',
+      geometry: {
+        type: 'Point',
+        coordinates: coord
+      }
+    }))
+  }
+
+  if (!map.getLayer('point-layer') && !map.getSource('point-source')) {
+    // 添加一个数据源，用于存储点数据
+    map.addSource('point-source', {
+      type: 'geojson',
+      data: pointData
+    })
+    // 添加一个圆点图层，用于显示点
+    map.addLayer({
+      id: 'point-layer',
+      type: 'circle',
+      source: 'point-source',
+      paint: {
+        'circle-radius': 3, // 点的半径
+        'circle-color': 'red' // 点的颜色
+      }
+    })
+  } else {
+    map.getSource('point-source').setData(pointData)
+  }
+}
+const drawLine = (coords) => {
+  const lineData = {
+    type: 'FeatureCollection',
+    features: [
+      {
+        type: 'Feature',
+        geometry: {
+          type: 'LineString',
+          coordinates: coords
+        }
+      }
+    ]
+  }
+
+  // 更新数据源的 GeoJSON 数据
+  map.getSource('line-source').setData(lineData)
+}
 </script>
 
 <template>
   <div class="MaplibreGLMap">
     <div id="map"></div>
+    <div v-if="controlShow && state.isLoadFinished" class="custom-control-group">
+      <var-button-group type="primary" vertical class="maplibregl-ctrl-group">
+        <var-button class="maplibregl-ctrl" icon-container @click="addDraw"
+          ><var-icon name="radio-marked"
+        /></var-button>
+        <var-button class="maplibregl-ctrl" icon-container @click="clearDraw"
+          ><var-icon name="trash-can-outline"
+        /></var-button>
+        <var-button class="maplibregl-ctrl" icon-container @click="endDraw">
+          <var-icon name="check" />
+        </var-button>
+      </var-button-group>
+    </div>
+    <var-fab v-model:active="state.active" position="left-top" :teleport="false" direction="bottom">
+      <var-button
+        v-for="(item, i) in state.layerTypes"
+        :key="i"
+        class="maplibregl-ctrl"
+        @click="handleChangeType(item)"
+      >
+        {{ item.label }}
+      </var-button>
+
+      <template #trigger>
+        <var-button class="trigger maplibregl-ctrl">
+          {{ currentLayerType }}
+        </var-button>
+      </template>
+    </var-fab>
   </div>
 </template>
 
@@ -408,12 +324,27 @@ defineExpose({
 .MaplibreGLMap {
   width: 100%;
   height: 100%;
+  position: relative;
 
   #map {
     width: 100%;
     height: 100%;
-    .maplibregl-ctrl-attrib .maplibregl-compact {
+    .maplibregl-ctrl-attrib.maplibregl-compact {
       display: none;
+    }
+  }
+  .custom-control-group {
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    .var-button-group {
+      border-radius: 4px;
+      .var-button {
+        color: #000;
+        .var-button__content {
+          justify-content: center;
+        }
+      }
     }
   }
 }

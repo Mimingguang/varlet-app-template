@@ -16,39 +16,11 @@ useOn('mapLoad',(map) => {
     console.log(_map);
 })
 useOn('mapClick',(e) => {
-    console.log(e);
+    // console.log(e);
 })
 onMounted(() => {
     useOn('detail',(item) => {
         console.log(item);
-    })
-    useOn('add', (item) => {
-        _map.setCenter([116.96989682278297, 36.78766181272357])
-        const circleSource = {
-            type: 'geojson',
-            data: {
-            type: 'Feature',
-            geometry: {
-                type: 'LineString',
-                coordinates: [[116.96989682278297, 36.78766181272357],[115.96989682278297, 36.78766181272357]]
-            }
-            }
-        }
-        if (_map.getSource('circle-source')) {
-            _map.getSource('circle-source').setData(circleSource)
-        } else {
-            _map.addSource('circle-source', circleSource)
-            _map.addLayer({
-                id: 'circle-layer',
-                type: 'line',
-                source: 'circle-source',
-                paint: {
-                    'line-color': '#00FF00',
-                    'line-width':4,
-                    'line-opacity': 0.5
-                }
-            })
-        }
     })
 })
 </script>
